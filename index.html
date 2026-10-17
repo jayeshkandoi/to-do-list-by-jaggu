@@ -132,7 +132,7 @@ footer button{color:var(--muted);text-decoration:underline}
   var KEY="todo.v1",tasks=[],filter="all",editId=null,lastRemoved=null,tTimer;
   var $=function(id){return document.getElementById(id)};
   function load(){try{tasks=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){tasks=[]}}
-  var DB_URL="";   // optional: your Firebase Realtime Database URL, see the comment at the top of this file
+  var DB_URL="https://jayesh-todo-default-rtdb.firebaseio.com/";   // optional: your Firebase Realtime Database URL, see the comment at the top of this file
   var code="",poll=null,lastAt=0;
   try{code=localStorage.getItem("todo.code")||""}catch(e){}
   function setSync(m){var s=$("sync");if(s)s.textContent=m}
