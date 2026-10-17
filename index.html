@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<!--
+  TO-DO LIST: one file, no build step.
+  GITHUB PAGES: upload this file as index.html to a repo, then Settings > Pages > Deploy from branch (main, / root).
+
+  OPTIONAL SYNC BETWEEN DEVICES (otherwise tasks stay in each browser):
+  1. Create a free Firebase project (console.firebase.google.com), then Build > Realtime Database > Create database.
+  2. In the Rules tab set:  { "rules": { "lists": { "$code": { ".read": true, ".write": true } } } }
+  3. Copy the database URL (like https://my-todo-default-rtdb.firebaseio.com) into DB_URL below.
+  4. In the app tap the sync button and enter the same code on every device. Anyone who knows a code can read that list, so make it long.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>To-Do List by Jaggu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+  --bg:#e9edf5;--surface:#ffffff;--ink:#161d33;--muted:#6a7390;--line:#d9dfeb;
+  --accent:#3452ff;--accent-ink:#ffffff;--high:#e5484d;--med:#e29a1a;--low:#2fa36b;--done:#a3abc2;
+  --font:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;--bg:#0f1424;--surface:#192038;--ink:#e8ecf8;--muted:#8d97b8;--line:#2a3354;
+  --accent:#6f86ff;--accent-ink:#0f1424;--done:#58617f;}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0f1424;--surface:#192038;--ink:#e8ecf8;--muted:#8d97b8;--line:#2a3354;--accent:#6f86ff;--accent-ink:#0f1424;--done:#58617f;}
+*,*::before,*::after{box-sizing:inherit}
+.hbtns{display:flex;gap:8px}.brand{font-weight:700;color:var(--accent);margin-bottom:6px;font-size:1.05rem}.composer[hidden]{display:none}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.45 var(--font);min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:28px 16px 72px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:20px}
+h1{font-size:clamp(2rem,7vw,3rem);line-height:1;margin:0;font-weight:700;letter-spacing:-.03em}
+.sub{color:var(--muted);margin:8px 0 0}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.icon{width:38px;height:38px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;font-size:18px}
+.progress{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:16px}
+.progress .row{display:flex;justify-content:space-between;font-weight:500;margin-bottom:10px}
+.bar{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:99px;transition:width .4s ease}
+.composer{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:16px;display:grid;gap:10px}
+.composer.editing{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.composer .title{width:100%;border:0;background:transparent;font-size:1.15rem;font-weight:500;padding:6px 4px;outline:none}
+.composer .title::placeholder{color:var(--muted)}
+.fields{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fields input,.fields select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-height:40px}
+.fields .grow{flex:1}
+.primary{background:var(--accent);color:var(--accent-ink);border-radius:10px;padding:0 18px;min-height:40px;font-weight:700}
+.ghost{border:1px solid var(--line);border-radius:10px;padding:0 14px;min-height:40px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.tools input[type=search]{flex:1;min-width:140px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-height:40px}
+.tools select{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;min-height:40px}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.tabs button{padding:6px 14px;border-radius:9px;color:var(--muted);font-weight:500}
+.tabs button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink)}
+ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+li.task{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--med);border-radius:14px;padding:12px 14px}
+li.task.p-high{border-left-color:var(--high)}li.task.p-low{border-left-color:var(--low)}
+.check{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center;margin-top:2px;color:transparent;font-size:15px;font-weight:700}
+.done .check{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.name{font-weight:500;word-break:break-word}
+.done .name{color:var(--done);text-decoration:line-through}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:.82rem;color:var(--muted)}
+.chip{border:1px solid var(--line);border-radius:99px;padding:1px 10px;background:var(--bg)}
+.chip.late{color:var(--high);border-color:var(--high)}
+button.chip{cursor:pointer}
+.acts{display:flex;gap:2px}
+.acts button{width:34px;height:34px;border-radius:8px;color:var(--muted);font-size:16px}
+.acts button:hover{background:var(--bg);color:var(--ink)}
+.empty{text-align:center;color:var(--muted);padding:36px 12px;border:1.5px dashed var(--line);border-radius:14px}
+footer{display:flex;justify-content:space-between;margin-top:16px;color:var(--muted);font-size:.9rem}
+footer button{color:var(--muted);text-decoration:underline}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);opacity:0;pointer-events:none;background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:12px;display:flex;gap:14px;align-items:center;transition:.25s}
+#toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#toast button{font-weight:700;color:inherit;text-decoration:underline}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><div class="brand">To-Do List by Jaggu</div><h1 id="greet">Today’s tasks</h1><p class="sub" id="date"></p></div>
+    <div class="hbtns"><button class="icon" id="syncBtn" aria-label="Sync across devices" title="Sync with a code">⇅</button><button class="icon" id="theme" aria-label="Switch light or dark theme">◐</button></div>
+  </header>
+
+  <section class="composer" id="syncBox" hidden>
+    <strong>Sync with a code</strong>
+    <p class="sub" style="margin:0">Pick any code (6+ letters or numbers) and enter the same code on your other device. Treat it like a password.</p>
+    <div class="fields"><input class="grow" id="codeIn" placeholder="e.g. mango-4821-river" maxlength="40" autocomplete="off" aria-label="Sync code"><button class="ghost" id="gen">Generate</button><button class="ghost" id="disc" hidden>Disconnect</button><button class="primary" id="connect">Connect</button></div>
+  </section>
+
+  <section class="progress" aria-label="Progress">
+    <div class="row"><span id="pText">0 of 0 done</span><span id="pPct">0%</span></div>
+    <div class="bar"><i id="pBar"></i></div>
+  </section>
+
+  <section class="composer" id="composer">
+    <input class="title" id="title" placeholder="What needs doing?" autocomplete="off" maxlength="200" aria-label="Task name">
+    <div class="fields">
+      <input type="date" id="due" aria-label="Due date">
+      <select id="prio" aria-label="Priority"><option value="high">High</option><option value="med" selected>Medium</option><option value="low">Low</option></select>
+      <input class="grow" id="cat" list="cats" placeholder="Category (work, home…)" maxlength="24" aria-label="Category">
+      <datalist id="cats"></datalist>
+      <button class="ghost" id="cancel" hidden>Cancel</button>
+      <button class="primary" id="save">Add task</button>
+    </div>
+  </section>
+
+  <div class="tools">
+    <input type="search" id="q" placeholder="Search tasks" aria-label="Search tasks">
+    <select id="sort" aria-label="Sort by">
+      <option value="manual">Newest first</option><option value="due">Due date</option><option value="prio">Priority</option>
+    </select>
+    <div class="tabs" role="group" aria-label="Filter">
+      <button data-f="all" aria-pressed="true">All</button><button data-f="active" aria-pressed="false">To do</button><button data-f="done" aria-pressed="false">Done</button>
+    </div>
+  </div>
+
+  <ul id="list"></ul>
+  <footer><span id="left"></span><span id="sync"></span><button id="clear">Clear completed</button></footer>
+</div>
+<div id="toast" role="status"><span id="tmsg"></span><button id="undo">Undo</button></div>
+
+<script>
+(function(){
+  var KEY="todo.v1",tasks=[],filter="all",editId=null,lastRemoved=null,tTimer;
+  var $=function(id){return document.getElementById(id)};
+  function load(){try{tasks=JSON.parse(localStorage.getItem(KEY))||[]}catch(e){tasks=[]}}
+  var DB_URL="";   // optional: your Firebase Realtime Database URL, see the comment at the top of this file
+  var code="",poll=null,lastAt=0;
+  try{code=localStorage.getItem("todo.code")||""}catch(e){}
+  function setSync(m){var s=$("sync");if(s)s.textContent=m}
+  function rurl(){return DB_URL.replace(/\/$/,"")+"/lists/"+code+".json"}
+  function push(){
+    var at=Date.now();setSync("Saving\u2026");
+    fetch(rurl(),{method:"PUT",body:JSON.stringify({tasks:tasks,at:at})})
+      .then(function(r){if(!r.ok)throw 0;lastAt=at;setSync("Synced with code "+code)})
+      .catch(function(){setSync("Could not reach the sync server")});
+  }
+  function persist(){
+    try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}
+    if(code&&DB_URL)push();
+  }
+  function pull(first){
+    fetch(rurl()).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
+      if(first){
+        if(d){
+          var remote=d.tasks||[],ids={};remote.forEach(function(t){ids[t.id]=1});
+          var extra=tasks.filter(function(t){return !ids[t.id]});
+          tasks=extra.concat(remote);lastAt=d.at||0;
+          try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}
+          render();if(extra.length)push();else setSync("Synced with code "+code);
+        }else push();
+      }else if(d&&(d.at||0)>lastAt){
+        tasks=d.tasks||[];lastAt=d.at;
+        try{localStorage.setItem(KEY,JSON.stringify(tasks))}catch(e){}
+        render();setSync("Synced with code "+code);
+      }
+    }).catch(function(){setSync("Could not reach the sync server")});
+  }
+  var uid=function(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)};
+  var iso=function(d){var z=new Date(d.getTime()-d.getTimezoneOffset()*6e4);return z.toISOString().slice(0,10)};
+  var today=function(){return iso(new Date())};
+  var P={high:0,med:1,low:2},PN={high:"High",med:"Medium",low:"Low"};
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+  function dueLabel(d){
+    if(!d)return"";var t=today();if(d===t)return"Today";
+    var tm=new Date();tm.setDate(tm.getDate()+1);if(d===iso(tm))return"Tomorrow";
+    return new Date(d+"T00:00").toLocaleDateString(undefined,{day:"numeric",month:"short"});
+  }
+  function toast(msg,undo){
+    $("tmsg").textContent=msg;$("undo").hidden=!undo;$("toast").classList.add("show");
+    clearTimeout(tTimer);tTimer=setTimeout(function(){$("toast").classList.remove("show")},4500);
+  }
+  function visible(){
+    var q=$("q").value.trim().toLowerCase(),s=$("sort").value;
+    var r=tasks.filter(function(t){
+      if(filter==="active"&&t.done)return false;if(filter==="done"&&!t.done)return false;
+      return !q||(t.title+" "+(t.cat||"")).toLowerCase().indexOf(q)>-1;
+    });
+    if(s==="due")r.sort(function(a,b){return (a.due||"9")>(b.due||"9")?1:-1});
+    if(s==="prio")r.sort(function(a,b){return P[a.prio]-P[b.prio]});
+    return r;
+  }
+  function render(){
+    var done=tasks.filter(function(t){return t.done}).length,n=tasks.length,pct=n?Math.round(done/n*100):0;
+    $("pText").textContent=done+" of "+n+" done";$("pPct").textContent=pct+"%";$("pBar").style.width=pct+"%";
+    $("left").textContent=(n-done)+" left";
+    var h=new Date().getHours();$("greet").textContent=(h<12?"Good morning":h<18?"Good afternoon":"Good evening");
+    $("date").textContent=new Date().toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"long"});
+    var cats={};tasks.forEach(function(t){if(t.cat)cats[t.cat]=1});
+    $("cats").innerHTML=Object.keys(cats).map(function(c){return'<option value="'+esc(c)+'">'}).join("");
+    var v=visible();
+    if(!v.length){$("list").innerHTML='<div class="empty">'+(n?"No tasks match this view.":"Nothing here yet. Type a task above and press Enter.")+"</div>";return}
+    $("list").innerHTML=v.map(function(t){
+      var late=t.due&&!t.done&&t.due<today();
+      return'<li class="task p-'+t.prio+(t.done?" done":"")+'" data-id="'+t.id+'">'
+      +'<button class="check" data-a="toggle" aria-label="'+(t.done?"Mark as not done":"Mark as done")+'">✓</button>'
+      +'<div><div class="name">'+esc(t.title)+'</div><div class="meta">'
+      +(t.due?'<span class="chip'+(late?" late":"")+'">'+(late?"Overdue · ":"")+dueLabel(t.due)+"</span>":"")
+      +'<button class="chip" data-a="prio" title="Change priority">'+PN[t.prio]+"</button>"
+      +(t.cat?'<span class="chip">'+esc(t.cat)+"</span>":"")+"</div></div>"
+      +'<div class="acts"><button data-a="push" title="Move to tomorrow" aria-label="Move to tomorrow">⏭</button>'
+      +'<button data-a="edit" title="Edit" aria-label="Edit task">✎</button>'
+      +'<button data-a="del" title="Delete" aria-label="Delete task">✕</button></div></li>';
+    }).join("");
+  }
+  function resetForm(){
+    editId=null;$("title").value="";$("due").value="";$("prio").value="med";$("cat").value="";
+    $("save").textContent="Add task";$("cancel").hidden=true;$("composer").classList.remove("editing");
+  }
+  function save(){
+    var title=$("title").value.trim();if(!title){$("title").focus();return}
+    var data={title:title,due:$("due").value,prio:$("prio").value,cat:$("cat").value.trim()};
+    if(editId){var t=tasks.find(function(x){return x.id===editId});if(t)Object.assign(t,data);toast("Changes saved")}
+    else tasks.unshift(Object.assign({id:uid(),done:false},data));
+    persist();resetForm();render();$("title").focus();
+  }
+  $("save").onclick=save;$("cancel").onclick=resetForm;
+  $("title").addEventListener("keydown",function(e){if(e.key==="Enter")save();if(e.key==="Escape")resetForm()});
+  $("q").oninput=render;$("sort").onchange=render;
+  document.querySelectorAll(".tabs button").forEach(function(b){b.onclick=function(){
+    filter=b.dataset.f;document.querySelectorAll(".tabs button").forEach(function(x){x.setAttribute("aria-pressed",x===b)});render()}});
+  $("list").onclick=function(e){
+    var b=e.target.closest("button[data-a]");if(!b)return;
+    var li=b.closest("li"),i=tasks.findIndex(function(x){return x.id===li.dataset.id}),t=tasks[i],a=b.dataset.a;
+    if(a==="toggle")t.done=!t.done;
+    if(a==="prio")t.prio=["high","med","low"][(P[t.prio]+1)%3];
+    if(a==="push"){var d=t.due?new Date(t.due+"T00:00"):new Date();d.setDate(d.getDate()+1);t.due=iso(d);toast("Moved to "+dueLabel(t.due))}
+    if(a==="del"){lastRemoved={t:t,i:i};tasks.splice(i,1);toast("Task deleted",true)}
+    if(a==="edit"){editId=t.id;$("title").value=t.title;$("due").value=t.due||"";$("prio").value=t.prio;$("cat").value=t.cat||"";
+      $("save").textContent="Save changes";$("cancel").hidden=false;$("composer").classList.add("editing");$("title").focus();window.scrollTo({top:0,behavior:"smooth"});return}
+    persist();render();
+  };
+  $("undo").onclick=function(){if(lastRemoved){tasks.splice(lastRemoved.i,0,lastRemoved.t);lastRemoved=null;persist();render();$("toast").classList.remove("show")}};
+  $("clear").onclick=function(){var n=tasks.length;tasks=tasks.filter(function(t){return !t.done});if(n!==tasks.length){persist();render();toast("Completed tasks cleared")}};
+  $("theme").onclick=function(){
+    var r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+    r.dataset.theme=dark?"light":"dark";try{localStorage.setItem("todo.theme",r.dataset.theme)}catch(e){}
+  };
+  try{var th=localStorage.getItem("todo.theme");if(th)document.documentElement.dataset.theme=th}catch(e){}
+  load();render();
+  setSync("Saved on this device only");
+  var clean=function(s){return s.toLowerCase().replace(/[^a-z0-9_-]/g,"")};
+  function connect(c){
+    code=c;try{localStorage.setItem("todo.code",c)}catch(e){}
+    clearInterval(poll);$("disc").hidden=!c;$("codeIn").value=c;
+    if(!c){setSync("Saved on this device only");return}
+    if(!DB_URL){setSync("Sync is not set up yet (see the top of the file)");return}
+    pull(true);
+    poll=setInterval(function(){if(!document.hidden)pull(false)},6000);
+  }
+  $("syncBtn").onclick=function(){var b=$("syncBox");b.hidden=!b.hidden;if(!b.hidden)$("codeIn").focus()};
+  $("gen").onclick=function(){var w=["mango","river","cedar","amber","lotus","pearl","maple","coral"];$("codeIn").value=w[Math.floor(Math.random()*8)]+"-"+Math.floor(1000+Math.random()*9000)+"-"+w[Math.floor(Math.random()*8)]+"-"+Math.random().toString(36).slice(2,6)};
+  $("connect").onclick=function(){var c=clean($("codeIn").value);if(c.length<6){setSync("Use at least 6 letters or numbers");return}connect(c);$("syncBox").hidden=true};
+  $("disc").onclick=function(){connect("");$("syncBox").hidden=true};
+  if(code)connect(code);
+})();
+</script>
+</body>
+</html>
